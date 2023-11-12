@@ -1,5 +1,6 @@
 import React from "react";
 import axios from "axios";
+import qs from "qs";
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import Category from "../components/Category";
