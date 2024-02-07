@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import axios from "axios";
 import qs from "qs";
 import { useEffect, useState } from "react";
@@ -24,7 +24,8 @@ const Home = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
+  const isSearch = useRef(false);
+  const isMounted = useRef(false);
   const { searchValue } = React.useContext(SearchContext);
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,24 +36,11 @@ const Home = () => {
   const onChangePage = (number) => {
     dispatch(setCurrentPage(number));
   };
-
-  useEffect(() => {
-    if (window.location.search) {
-      const params = qs.parse(window.location.search.substring(1));
-
-      const sort = sortList.find(
-        (obj) => obj.sortProperty === params.sortProperty
-      );
-
-      dispatch(setFilters({ ...params, sort }));
-    }
-  }, []);
-
-  useEffect(() => {
+  const fetchPizzas = () => {
     setIsLoading(true);
     const sortBy = sortType?.replace("-", "");
     const order = sortType?.includes("-") ? "asc" : "desc";
-    const category = categoryId > 0 ? `category=&{categoryId}` : "";
+    const category = categoryId > 0 ? `category=${categoryId}` : "";
     const search = searchValue ? `&search=${searchValue}` : "";
 
     axios
@@ -64,18 +52,44 @@ const Home = () => {
 
         setIsLoading(false);
       });
-    window.scrollTo(0, 0);
-  }, [categoryId, sortType, searchValue, currentPage]);
+  };
 
+  // Если изменили параметры и был первый рендер
   useEffect(() => {
-    const queryString = qs.stringify({
-      sortProperty: sortType,
-      categoryId,
-      currentPage,
-    });
+    if (isMounted.current) {
+      const queryString = qs.stringify({
+        sortProperty: sortType,
+        categoryId,
+        currentPage,
+      });
 
-    navigate(`?${queryString}`);
+      navigate(`?${queryString}`);
+    }
+    isMounted.current = true;
   }, [categoryId, sortType, currentPage]);
+
+  //Если был первый рендер, то проверяем URL параметры и сохраняем в редаксе
+  useEffect(() => {
+    if (window.location.search) {
+      const params = qs.parse(window.location.search.substring(1));
+
+      const sort = sortList.find(
+        (obj) => obj.sortProperty === params.sortProperty
+      );
+
+      dispatch(setFilters({ ...params, sort }));
+    }
+    isSearch.current = true;
+  }, []);
+  // Если был первый рендер то запрашиваем пиццы
+  useEffect(() => {
+    window.scrollTo(0, 0);
+
+    if (!isSearch.current) {
+      fetchPizzas();
+    }
+    isSearch.current = false;
+  }, [categoryId, sortType, searchValue, currentPage]);
 
   const skeletons = [...new Array(6)].map((_, index) => (
     <Skeleton key={index} />
